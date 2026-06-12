@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>민원 기록 복호화</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #f4f6f8;
+      color: #1d2733;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    main {
+      width: min(920px, 100%);
+      background: #ffffff;
+      border: 1px solid #d9e0e7;
+      border-radius: 8px;
+      box-shadow: 0 18px 48px rgba(29, 39, 51, 0.1);
+      overflow: hidden;
+    }
+
+    header {
+      padding: 24px 28px;
+      border-bottom: 1px solid #e4e9ee;
+      background: #fbfcfd;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: #596674;
+      line-height: 1.55;
+    }
+
+    section {
+      padding: 24px 28px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-weight: 650;
+      color: #263442;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid #cbd5df;
+      border-radius: 6px;
+      padding: 10px;
+      background: #ffffff;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      border: 1px solid #cbd5df;
+      border-radius: 6px;
+      padding: 10px;
+      background: #ffffff;
+      font: inherit;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button, a.button {
+      border: 0;
+      border-radius: 6px;
+      padding: 11px 15px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+    }
+
+    button.primary {
+      background: #1769e0;
+      color: #ffffff;
+    }
+
+    button.secondary, a.button {
+      background: #e9eef4;
+      color: #243242;
+    }
+
+    button:disabled, a.disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      background: #eef4ff;
+      color: #244a85;
+      min-height: 46px;
+    }
+
+    .status.error {
+      background: #fff0f0;
+      color: #a12222;
+    }
+
+    .notice {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid #f0c36a;
+      border-radius: 6px;
+      background: #fff8e6;
+      color: #4f3600;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    .check input {
+      margin-top: 4px;
+    }
+
+    .preview {
+      border-top: 1px solid #e4e9ee;
+      background: #111820;
+      color: #e8edf3;
+    }
+
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px;
+      max-height: 420px;
+      overflow: auto;
+      background: #0b1118;
+      border: 1px solid #26313d;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 14px;
+      }
+
+      header, section {
+        padding: 18px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>민원 기록 복호화</h1>
+      <p>`.enc` 기록 파일과 최고관리자 `private.pem`을 선택하면 로컬 브라우저에서만 복호화합니다.</p>
+    </header>
+
+    <section>
+      <div class="grid">
+        <label>
+          암호화 기록 파일 (.enc)
+          <input id="encFile" type="file" accept=".enc,application/octet-stream">
+        </label>
+        <label>
+          개인키 파일 (private.pem)
+          <input id="privateKeyFile" type="file" accept=".pem,.key,text/plain">
+        </label>
+        <label>
+          복호화 담당자
+          <input id="operatorName" type="text" autocomplete="off" placeholder="예: 최고관리자 홍길동">
+        </label>
+        <label>
+          복호화 사유
+          <textarea id="auditReason" rows="3" placeholder="예: 허위 신고 여부 확인" required></textarea>
+        </label>
+      </div>
+
+      <div class="notice">
+        <strong>개인정보 및 민감정보 열람 경고</strong>
+        <p id="privacyNotice">복호화 결과에는 민원인 신원, 대화 내용, 내부 메모 등 개인정보와 민감한 운영 정보가 포함될 수 있습니다.</p>
+        <label class="check">
+          <input id="privacyConsent" type="checkbox">
+          <span>허가된 목적과 필요한 범위에서만 열람하며, 복호화 사실이 감사 로그로 기록되는 것에 동의합니다.</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="decryptButton" class="primary" type="button">복호화</button>
+        <a id="downloadButton" class="button disabled" download="plain.json">plain.json 다운로드</a>
+        <button id="clearButton" class="secondary" type="button">초기화</button>
+      </div>
+
+      <div id="status" class="status">감사 로그 설정을 확인하는 중입니다.</div>
+    </section>
+
+    <section class="preview">
+      <h2>복호화 결과 미리보기</h2>
+      <pre id="preview">(아직 복호화된 내용이 없습니다.)</pre>
+    </section>
+  </main>
+
+  <script src="./config.js"></script>
+  <script>
+    const encInput = document.getElementById('encFile');
+    const keyInput = document.getElementById('privateKeyFile');
+    const operatorInput = document.getElementById('operatorName');
+    const reasonInput = document.getElementById('auditReason');
+    const privacyNotice = document.getElementById('privacyNotice');
+    const privacyConsent = document.getElementById('privacyConsent');
+    const decryptButton = document.getElementById('decryptButton');
+    const downloadButton = document.getElementById('downloadButton');
+    const clearButton = document.getElementById('clearButton');
+    const statusBox = document.getElementById('status');
+    const preview = document.getElementById('preview');
+
+    let objectUrl = null;
+    const auditConfig = window.DECRYPT_AUDIT_CONFIG || {};
+    if (auditConfig.operatorName) operatorInput.value = auditConfig.operatorName;
+    if (auditConfig.privacyNotice) privacyNotice.textContent = auditConfig.privacyNotice;
+    validateAuditConfigOnLoad();
+
+    decryptButton.addEventListener('click', decryptSelectedFiles);
+    clearButton.addEventListener('click', reset);
+
+    async function decryptSelectedFiles() {
+      setStatus('복호화 중입니다...');
+      revokeDownload();
+
+      try {
+        const encFile = encInput.files[0];
+        const keyFile = keyInput.files[0];
+        const operatorName = operatorInput.value.trim();
+        const reason = reasonInput.value.trim();
+        if (!encFile) throw new Error('.enc 파일을 선택하세요.');
+        if (!keyFile) throw new Error('private.pem 파일을 선택하세요.');
+        assertAuditConfig();
+        if (!operatorName) throw new Error('복호화 담당자를 입력하세요.');
+        if (!reason) throw new Error('복호화 사유를 입력하세요.');
+        if (!privacyConsent.checked) throw new Error('개인정보 열람 경고 및 감사 로그 기록에 동의해야 합니다.');
+
+        const payload = new Uint8Array(await encFile.arrayBuffer());
+        const privatePem = await keyFile.text();
+        const record = await decryptRecord(payload, privatePem);
+        const fileHash = await sha256Hex(payload);
+        const auditSent = await sendAuditLog({
+          record,
+          encFile,
+          fileHash,
+          operatorName,
+          reason,
+          success: true
+        });
+        if (!auditSent) throw new Error('감사 로그 전송 없이는 복호화 결과를 표시할 수 없습니다.');
+        const pretty = JSON.stringify(record, null, 2);
+
+        preview.textContent = pretty;
+        objectUrl = URL.createObjectURL(new Blob([pretty + '\n'], { type: 'application/json' }));
+        downloadButton.href = objectUrl;
+        downloadButton.classList.remove('disabled');
+        const id = record.anonymousId || encFile.name.replace(/\.enc$/i, '');
+        downloadButton.download = `plain-${id}.json`;
+        setStatus('복호화가 완료되었습니다. 필요한 경우 결과를 다운로드하세요.');
+      } catch (error) {
+        await sendFailureAuditIfPossible(error).catch(() => null);
+        preview.textContent = '(복호화 실패)';
+        setStatus(error.message, true);
+      }
+    }
+
+    async function sendFailureAuditIfPossible(error) {
+      const encFile = encInput.files[0];
+      const operatorName = operatorInput.value.trim();
+      const reason = reasonInput.value.trim();
+      if (!encFile || !operatorName || !reason || !auditConfig.webhookUrl) return;
+      const payload = new Uint8Array(await encFile.arrayBuffer());
+      await sendAuditLog({
+        record: null,
+        encFile,
+        fileHash: await sha256Hex(payload),
+        operatorName,
+        reason,
+        success: false,
+        errorMessage: error.message
+      });
+    }
+
+    async function sendAuditLog({ record, encFile, fileHash, operatorName, reason, success, errorMessage }) {
+      assertAuditConfig();
+      const anonymousId = record?.anonymousId || encFile.name.replace(/\.enc$/i, '');
+      const response = await fetch(auditConfig.webhookUrl + '?wait=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: '복호화 감사 로그',
+          embeds: [{
+            title: success ? '민원 기록 복호화 완료' : '민원 기록 복호화 실패',
+            color: success ? 0x30a46c : 0xd94141,
+            fields: [
+              { name: '익명 ID', value: `\`${anonymousId}\``, inline: true },
+              { name: '담당자', value: operatorName, inline: true },
+              { name: '파일명', value: encFile.name, inline: false },
+              { name: '파일 SHA-256', value: `\`${fileHash}\``, inline: false },
+              { name: '사유', value: reason.slice(0, 1000), inline: false },
+              ...(errorMessage ? [{ name: '오류', value: errorMessage.slice(0, 1000), inline: false }] : [])
+            ],
+            timestamp: new Date().toISOString()
+          }]
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`감사 로그 전송 실패: HTTP ${response.status}`);
+      }
+      return true;
+    }
+
+    async function decryptRecord(payload, privatePem) {
+      if (payload.length < 542) throw new Error('파일 크기가 올바르지 않습니다.');
+      const version = payload[0];
+      if (version !== 1) throw new Error(`지원하지 않는 .enc 버전입니다: ${version}`);
+
+      const encryptedKey = payload.slice(1, 513);
+      const iv = payload.slice(513, 525);
+      const authTag = payload.slice(525, 541);
+      const ciphertext = payload.slice(541);
+      const privateKey = await importPrivateKey(privatePem);
+      const aesKeyRaw = await crypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        privateKey,
+        encryptedKey
+      );
+      const aesKey = await crypto.subtle.importKey(
+        'raw',
+        aesKeyRaw,
+        { name: 'AES-GCM' },
+        false,
+        ['decrypt']
+      );
+
+      const encrypted = concat(ciphertext, authTag);
+      const plainBuffer = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv, tagLength: 128 },
+        aesKey,
+        encrypted
+      );
+      const record = JSON.parse(new TextDecoder().decode(plainBuffer));
+      assertRecordNotExpired(record);
+      return record;
+    }
+
+    function assertRecordNotExpired(record) {
+      if (!record.expiresAt) return;
+      const expiresAt = new Date(record.expiresAt);
+      if (Number.isNaN(expiresAt.getTime())) throw new Error('기록 만료일 정보가 올바르지 않습니다.');
+      if (Date.now() > expiresAt.getTime()) {
+        throw new Error(`이 암호화 기록은 ${record.expiresAt}에 보관 기간이 만료되어 복호화할 수 없습니다.`);
+      }
+    }
+
+    async function importPrivateKey(pem) {
+      const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/.test(pem);
+      const body = pem
+        .replace(/-----BEGIN [^-]+-----/g, '')
+        .replace(/-----END [^-]+-----/g, '')
+        .replace(/\s+/g, '');
+      const der = isPkcs1 ? wrapPkcs1RsaPrivateKey(base64ToBytes(body)) : base64ToArrayBuffer(body);
+      try {
+        return await crypto.subtle.importKey(
+          'pkcs8',
+          der,
+          { name: 'RSA-OAEP', hash: 'SHA-256' },
+          false,
+          ['decrypt']
+        );
+      } catch {
+        throw new Error('개인키를 읽을 수 없습니다. private.pem 파일이 맞는지 확인하세요.');
+      }
+    }
+
+    function base64ToBytes(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    function base64ToArrayBuffer(base64) {
+      return base64ToBytes(base64);
+    }
+
+    function wrapPkcs1RsaPrivateKey(pkcs1) {
+      const version = new Uint8Array([0x02, 0x01, 0x00]);
+      const rsaEncryptionOid = new Uint8Array([
+        0x30, 0x0d,
+        0x06, 0x09,
+        0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+        0x05, 0x00
+      ]);
+      const privateKeyOctet = der(0x04, pkcs1);
+      return der(0x30, concat(concat(version, rsaEncryptionOid), privateKeyOctet));
+    }
+
+    function der(tag, value) {
+      return concat(new Uint8Array([tag]), concat(derLength(value.length), value));
+    }
+
+    function derLength(length) {
+      if (length < 128) return new Uint8Array([length]);
+      const bytes = [];
+      let remaining = length;
+      while (remaining > 0) {
+        bytes.unshift(remaining & 0xff);
+        remaining >>= 8;
+      }
+      return new Uint8Array([0x80 | bytes.length, ...bytes]);
+    }
+
+    function concat(a, b) {
+      const out = new Uint8Array(a.length + b.length);
+      out.set(a, 0);
+      out.set(b, a.length);
+      return out;
+    }
+
+    function setStatus(message, isError = false) {
+      statusBox.textContent = message;
+      statusBox.classList.toggle('error', isError);
+    }
+
+    function reset() {
+      encInput.value = '';
+      keyInput.value = '';
+      reasonInput.value = '';
+      privacyConsent.checked = false;
+      preview.textContent = '(아직 복호화된 내용이 없습니다.)';
+      validateAuditConfigOnLoad();
+      revokeDownload();
+    }
+
+    function revokeDownload() {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = null;
+      downloadButton.removeAttribute('href');
+      downloadButton.classList.add('disabled');
+    }
+
+    async function sha256Hex(bytes) {
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    function assertAuditConfig() {
+      if (!auditConfig.webhookUrl || !/^https:\/\/(?:discord\.com|discordapp\.com)\/api\/webhooks\//.test(auditConfig.webhookUrl)) {
+        throw new Error('decrypt-gui/config.js에 유효한 Discord Webhook URL이 필요합니다.');
+      }
+    }
+
+    function validateAuditConfigOnLoad() {
+      try {
+        assertAuditConfig();
+        decryptButton.disabled = false;
+        setStatus('파일을 선택한 뒤 복호화를 누르세요. 감사 로그 전송은 필수입니다.');
+      } catch (error) {
+        decryptButton.disabled = true;
+        setStatus(`${error.message} config.example.js를 config.js로 복사한 뒤 설정하세요.`, true);
+      }
+    }
+  </script>
+</body>
+</html>
