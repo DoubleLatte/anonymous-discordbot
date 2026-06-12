@@ -1,0 +1,24 @@
+{
+  "name": "discord-complaint-bot",
+  "version": "0.1.0",
+  "description": "Discord DM based anonymous grievance management bot",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "setup": "node src/tools/setup.js",
+    "start": "node src/index.js",
+    "deploy:commands": "node src/deployCommands.js",
+    "decrypt": "node src/crypto/decrypt.js",
+    "healthcheck": "node src/tools/healthcheck.js",
+    "check": "node --check src/index.js && node --check src/deployCommands.js && node --check src/crypto/decrypt.js && node --check src/tools/setup.js && node --check src/tools/healthcheck.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.5.0",
+    "ioredis": "^5.6.1",
+    "node-cron": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,11 @@
+.env
+node_modules/
+keys/
+records/
+logs/
+sessions/
+*.enc
+*.pem
+npm-debug.log*
+.tmp/
+decrypt-gui/config.js
