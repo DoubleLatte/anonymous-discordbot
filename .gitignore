@@ -1,11 +1,31 @@
+# 로컬 설정과 암호화 키는 저장소에 올리지 않습니다.
 .env
-node_modules/
-keys/
-records/
-logs/
-sessions/
-*.enc
+.env.*
+!.env.example
 *.pem
-npm-debug.log*
-.tmp/
+*.key
+keys/
+# 실제 Webhook URL이 들어가는 복호화 GUI 설정
 decrypt-gui/config.js
+
+# 의존성과 실행 중 생성되는 민원 데이터
+node_modules/
+logs/
+records/
+sessions/
+*.log
+*.enc
+*.enc.json
+plain.json
+plain-*.json
+
+# 개발 도구 및 임시 산출물
+.codex/
+.agents/
+.vscode/
+.idea/
+coverage/
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db

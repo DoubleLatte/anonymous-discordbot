@@ -21,6 +21,7 @@ async function encryptRecord(record, publicKeyPath) {
     throw new Error('RSA public key must be 4096-bit so encryptedKey is 512 bytes');
   }
 
+  // 복호화 도구와 공유하는 v1 바이너리 순서입니다. 변경 시 버전을 올려야 합니다.
   return Buffer.concat([Buffer.from([1]), encryptedKey, iv, authTag, ciphertext]);
 }
 

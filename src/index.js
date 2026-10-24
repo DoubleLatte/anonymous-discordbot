@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, Events, GatewayIntentBits, Partials } = require('discord.js');
 const config = require('./config');
 const logger = require('./utils/logger');
 const { loadSessions } = require('./session/persistence');
@@ -22,7 +22,7 @@ const client = new Client({
 process.on('uncaughtException', (error) => logger.error('uncaughtException', error));
 process.on('unhandledRejection', (error) => logger.error('unhandledRejection', error));
 
-client.once('ready', async () => ready(client));
+client.once(Events.ClientReady, async () => ready(client));
 client.on('interactionCreate', async (interaction) => interactionCreate(client, interaction));
 client.on('messageCreate', async (message) => messageCreate(client, message));
 
@@ -35,7 +35,12 @@ async function start() {
 }
 
 if (require.main === module) {
-  start().catch((error) => logger.error('startup failed', error));
+  start().catch(async (error) => {
+    await logger.error('startup failed', error);
+    client.destroy();
+    await require('./storage/redisClient').quitRedis();
+    process.exitCode = 1;
+  });
 }
 
 module.exports = { client, start };

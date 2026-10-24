@@ -5,11 +5,20 @@ function all() {
 }
 
 function replaceAll(values) {
+  const restored = new Map();
+  for (const session of values || []) {
+    if (restored.has(session.anonymousId)) throw new Error('Duplicate anonymous ID in saved sessions');
+    restored.set(session.anonymousId, session);
+  }
   sessions.clear();
-  for (const session of values || []) sessions.set(session.anonymousId, session);
+  for (const [id, session] of restored) sessions.set(id, session);
 }
 
 function set(session) {
+  const existing = sessions.get(session.anonymousId);
+  if (existing && (existing.complainantId !== session.complainantId || existing.channelId !== session.channelId)) {
+    throw new Error('Anonymous ID already belongs to another complaint');
+  }
   sessions.set(session.anonymousId, { ...session, updatedAt: new Date().toISOString() });
 }
 

@@ -28,7 +28,7 @@ const guildCommands = [
     .setDescription('현재 민원 상태를 변경합니다')
     .addStringOption((option) =>
       option.setName('상태').setDescription('변경할 상태').setRequired(true)
-        .addChoices(...Object.entries(STATUSES).map(([value, name]) => ({ name, value })))
+        .addChoices(...Object.entries(STATUSES).filter(([value]) => value !== 'completed').map(([value, name]) => ({ name, value })))
     ),
   new SlashCommandBuilder()
     .setName('우선순위')

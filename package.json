@@ -10,7 +10,8 @@
     "deploy:commands": "node src/deployCommands.js",
     "decrypt": "node src/crypto/decrypt.js",
     "healthcheck": "node src/tools/healthcheck.js",
-    "check": "node --check src/index.js && node --check src/deployCommands.js && node --check src/crypto/decrypt.js && node --check src/tools/setup.js && node --check src/tools/healthcheck.js"
+    "check": "node src/tools/check.js",
+    "test": "node --test"
   },
   "dependencies": {
     "discord.js": "^14.19.3",

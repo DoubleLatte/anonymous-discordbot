@@ -6,6 +6,8 @@ async function decryptRecord(encPath, privateKeyPath) {
     fs.readFile(encPath),
     fs.readFile(privateKeyPath, 'utf8')
   ]);
+  // v1: 버전(1) + RSA 암호화 키(512) + IV(12) + 인증 태그(16) + 본문.
+  if (payload.length <= 541) throw new Error('Invalid encrypted record: truncated payload');
   const version = payload.readUInt8(0);
   if (version !== 1) throw new Error(`Unsupported enc version: ${version}`);
 
@@ -34,7 +36,7 @@ function assertRecordNotExpired(record, now = new Date()) {
   if (!record.expiresAt) return;
   const expiresAt = new Date(record.expiresAt);
   if (Number.isNaN(expiresAt.getTime())) throw new Error('Invalid record expiresAt value');
-  if (now.getTime() > expiresAt.getTime()) {
+  if (now.getTime() >= expiresAt.getTime()) {
     throw new Error(`This encrypted record expired at ${record.expiresAt} and cannot be decrypted.`);
   }
 }

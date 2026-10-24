@@ -7,7 +7,7 @@ const abuse = require('../utils/cooldown');
 const { saveAbuseState } = require('../storage/abusePersistence');
 const { loadClosedStats, summarizeStats } = require('../records/statistics');
 const { refreshComplaintMessage } = require('../utils/controlMessage');
-const { internalMemoEmbed, listEmbed, statsEmbed } = require('../utils/embedBuilder');
+const { internalMemoEmbed, listEmbed, statsEmbed, statusChangedEmbed } = require('../utils/embedBuilder');
 
 function isAdmin(member) {
   return member?.roles?.cache?.has(config.adminRoleId) || member?.permissions?.has(PermissionFlagsBits.Administrator);
@@ -46,12 +46,26 @@ async function addTag(interaction, tag) {
 async function setStatus(interaction, status) {
   const session = sessionForInteraction(interaction) || sessionStore.getByAnonymousId(interaction.customId?.split(':')[1]);
   if (!session || !STATUSES[status]) return interaction.reply({ content: '상태를 변경할 수 없습니다.', flags: MessageFlags.Ephemeral });
+  // 완료는 기록 보관과 채널 삭제가 함께 이뤄져야 하므로 종료 버튼으로만 처리합니다.
+  if (status === 'completed') return interaction.reply({ content: '완료 처리는 민원 메시지의 종료 버튼을 사용해 주세요.', flags: MessageFlags.Ephemeral });
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const previousStatus = session.status;
+  if (previousStatus === status) {
+    return interaction.editReply({ content: `이미 ${STATUSES[status]} 상태입니다.` });
+  }
   session.status = status;
   sessionStore.set(session);
   await saveSessions(sessionStore.all());
   await refreshComplaintMessage(interaction.client, session);
-  return interaction.editReply({ content: `상태를 ${STATUSES[status]}으로 변경했습니다.` });
+  const user = await interaction.client.users.fetch(session.complainantId).catch(() => null);
+  const notified = user
+    ? await user.send({ embeds: [statusChangedEmbed(session, previousStatus)] }).then(() => true).catch(() => false)
+    : false;
+  return interaction.editReply({
+    content: notified
+      ? `상태를 ${STATUSES[status]}으로 변경하고 민원인에게 알렸습니다.`
+      : `상태를 ${STATUSES[status]}으로 변경했지만 민원인에게 DM을 보내지 못했습니다.`
+  });
 }
 
 async function setPriority(interaction, priority) {
@@ -82,13 +96,24 @@ async function stats(interaction) {
   return interaction.reply({ embeds: [statsEmbed(summary)], flags: MessageFlags.Ephemeral });
 }
 
+function invalidUserId(interaction, userId) {
+  if (/^\d{17,20}$/.test(userId)) return null;
+  return interaction.reply({ content: '올바른 Discord 사용자 ID(숫자 17~20자리)를 입력해 주세요.', flags: MessageFlags.Ephemeral });
+}
+
 async function blockUser(interaction, userId) {
+  userId = userId.trim();
+  const rejected = invalidUserId(interaction, userId);
+  if (rejected) return rejected;
   abuse.block(userId);
   await saveAbuseState(abuse.snapshotState());
   return interaction.reply({ content: '해당 사용자의 민원 접수를 차단했습니다.', flags: MessageFlags.Ephemeral });
 }
 
 async function unblockUser(interaction, userId) {
+  userId = userId.trim();
+  const rejected = invalidUserId(interaction, userId);
+  if (rejected) return rejected;
   abuse.unblock(userId);
   await saveAbuseState(abuse.snapshotState());
   return interaction.reply({ content: '해당 사용자의 차단을 해제했습니다.', flags: MessageFlags.Ephemeral });

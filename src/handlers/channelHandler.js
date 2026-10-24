@@ -4,7 +4,7 @@ const config = require('../config');
 async function createComplaintChannel(client, anonymousId) {
   const guild = await client.guilds.fetch(config.guildId);
   return guild.channels.create({
-    name: `complaint-${anonymousId.toLowerCase()}`,
+    name: `민원-${anonymousId.toLowerCase()}`,
     type: ChannelType.GuildText,
     parent: config.complaintCategoryId,
     permissionOverwrites: [

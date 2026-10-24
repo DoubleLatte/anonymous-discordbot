@@ -18,12 +18,13 @@ const fields = [
   ['SUPER_ADMIN_ID', 'Super admin user ID', ''],
   ['SESSION_TIMEOUT_HOURS', 'Session timeout hours', '24'],
   ['COOLDOWN_MINUTES', 'Cooldown minutes', '30'],
-  ['RECORD_RETENTION_DAYS', 'Encrypted record retention days', '180'],
+  ['RECORD_RETENTION_DAYS', 'Discord archive retention days', '14'],
+  ['ENABLE_PLAINTEXT_ARCHIVE', 'Upload plaintext transcript including user-written content(true/false)', 'false'],
   ['WORK_HOURS_START', 'Work hours start(0-23)', '9'],
   ['WORK_HOURS_END', 'Work hours end(0-23)', '18'],
   ['WORK_HOURS_TIMEZONE', 'Work hours timezone', 'Asia/Seoul'],
   ['ACCEPT_COMPLAINTS_OUTSIDE_WORK_HOURS', 'Accept outside work hours(true/false)', 'true'],
-  ['MAX_ATTACHMENT_SIZE_MB', 'Max attachment size MB', '10']
+  ['MAX_ATTACHMENT_SIZE_MB', 'Max incoming/archive attachment size MB', '10']
 ];
 
 async function main() {
@@ -84,20 +85,18 @@ function maskSecret(label, value) {
 }
 
 async function generateRsaKeys() {
+  // 기존 개인키를 덮어쓰면 과거 민원 기록을 복구할 수 없습니다.
+  if (await exists(publicKeyPath) || await exists(privateKeyPath)) {
+    throw new Error('RSA key already exists. Back up and move existing keys before generating a new pair.');
+  }
   await fs.mkdir('keys', { recursive: true });
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 4096,
     publicKeyEncoding: { type: 'spki', format: 'pem' },
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
   });
-  await fs.writeFile(publicKeyPath, publicKey, { flag: 'wx' }).catch(async (error) => {
-    if (error.code !== 'EEXIST') throw error;
-    await fs.writeFile(publicKeyPath, publicKey);
-  });
-  await fs.writeFile(privateKeyPath, privateKey, { flag: 'wx' }).catch(async (error) => {
-    if (error.code !== 'EEXIST') throw error;
-    await fs.writeFile(privateKeyPath, privateKey);
-  });
+  await fs.writeFile(privateKeyPath, privateKey, { flag: 'wx', mode: 0o600 });
+  await fs.writeFile(publicKeyPath, publicKey, { flag: 'wx' });
 }
 
 async function writeEnv(env) {
@@ -113,6 +112,7 @@ async function writeEnv(env) {
     'SESSION_TIMEOUT_HOURS',
     'COOLDOWN_MINUTES',
     'RECORD_RETENTION_DAYS',
+    'ENABLE_PLAINTEXT_ARCHIVE',
     'WORK_HOURS_START',
     'WORK_HOURS_END',
     'WORK_HOURS_TIMEZONE',
